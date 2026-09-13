@@ -14,46 +14,43 @@ const PositionsDetails = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchInterviewFlow = async () => {
+        // Las dos cargas van encadenadas a proposito. Cuando corrian en paralelo
+        // y los candidatos resolvian antes que el flujo de entrevistas, el `map`
+        // sobre `prevStages` operaba sobre un array vacio y las tarjetas no se
+        // pintaban nunca. Se reproducia en el arranque en frio del backend.
+        const fetchPositionBoard = async () => {
             try {
-                const response = await fetch(`http://localhost:3010/positions/${id}/interviewFlow`);
-                const data = await response.json();
+                const flowResponse = await fetch(`http://localhost:3010/positions/${id}/interviewFlow`);
+                const data = await flowResponse.json();
                 const interviewSteps = data.interviewFlow.interviewFlow.interviewSteps.map(step => ({
                     title: step.name,
                     id: step.id,
                     candidates: []
                 }));
-                setStages(interviewSteps);
                 setPositionName(data.interviewFlow.positionName);
+                setStages(interviewSteps);
+
+                const candidatesResponse = await fetch(`http://localhost:3010/positions/${id}/candidates`);
+                const candidates = await candidatesResponse.json();
+                // Partimos de `interviewSteps`, no de `prevStages`: las fases ya
+                // estan resueltas en este punto, no dependemos del orden de render.
+                setStages(interviewSteps.map(stage => ({
+                    ...stage,
+                    candidates: candidates
+                        .filter(candidate => candidate.currentInterviewStep === stage.title)
+                        .map(candidate => ({
+                            id: candidate.candidateId.toString(),
+                            name: candidate.fullName,
+                            rating: candidate.averageScore,
+                            applicationId: candidate.applicationId
+                        }))
+                })));
             } catch (error) {
-                console.error('Error fetching interview flow:', error);
+                console.error('Error fetching position board:', error);
             }
         };
 
-        const fetchCandidates = async () => {
-            try {
-                const response = await fetch(`http://localhost:3010/positions/${id}/candidates`);
-                const candidates = await response.json();
-                setStages(prevStages =>
-                    prevStages.map(stage => ({
-                        ...stage,
-                        candidates: candidates
-                            .filter(candidate => candidate.currentInterviewStep === stage.title)
-                            .map(candidate => ({
-                                id: candidate.candidateId.toString(),
-                                name: candidate.fullName,
-                                rating: candidate.averageScore,
-                                applicationId: candidate.applicationId
-                            }))
-                    }))
-                );
-            } catch (error) {
-                console.error('Error fetching candidates:', error);
-            }
-        };
-
-        fetchInterviewFlow();
-        fetchCandidates();
+        fetchPositionBoard();
     }, [id]);
 
     const updateCandidateStep = async (candidateId, applicationId, newStep) => {
