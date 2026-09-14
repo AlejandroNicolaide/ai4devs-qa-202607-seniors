@@ -1,10 +1,26 @@
 {
+  "name": "ai4devs-qa",
+  "version": "1.0.0",
+  "scripts": {
+    "start:frontend": "npm start --prefix frontend",
+    "start:backend": "npm run dev --prefix backend",
+    "db:up": "docker compose up -d",
+    "db:migrate": "cd backend && npx prisma migrate deploy",
+    "db:seed": "cd backend && npx ts-node --transpile-only prisma/seed.ts",
+    "cy:open": "cypress open",
+    "cy:run": "cypress run",
+    "cy:run:stub": "cypress run --spec cypress/e2e/position.spec.js"
+  },
   "dependencies": {
     "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "cypress": "^16.0.0"
   },
   "prisma": {
     "schema": "backend/prisma/schema.prisma"
   },
-  "devDependencies": {
+  "allowScripts": {
+    "cypress@16.0.0": true
   }
 }
